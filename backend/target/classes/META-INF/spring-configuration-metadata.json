@@ -1,0 +1,83 @@
+{
+  "groups": [
+    {
+      "name": "health.drug-api",
+      "type": "com.health.config.DrugApiConfig",
+      "sourceType": "com.health.config.DrugApiConfig"
+    },
+    {
+      "name": "health.wechat",
+      "type": "com.health.config.WechatConfig",
+      "sourceType": "com.health.config.WechatConfig"
+    }
+  ],
+  "properties": [
+    {
+      "name": "health.drug-api.app-code",
+      "type": "java.lang.String",
+      "description": "AppCode",
+      "sourceType": "com.health.config.DrugApiConfig"
+    },
+    {
+      "name": "health.drug-api.app-key",
+      "type": "java.lang.String",
+      "description": "AppKey",
+      "sourceType": "com.health.config.DrugApiConfig"
+    },
+    {
+      "name": "health.drug-api.app-secret",
+      "type": "java.lang.String",
+      "description": "AppSecret",
+      "sourceType": "com.health.config.DrugApiConfig"
+    },
+    {
+      "name": "health.drug-api.barcode-query-path",
+      "type": "java.lang.String",
+      "description": "条形码查询接口路径",
+      "sourceType": "com.health.config.DrugApiConfig"
+    },
+    {
+      "name": "health.drug-api.drug-detail-path",
+      "type": "java.lang.String",
+      "description": "药品详情接口路径",
+      "sourceType": "com.health.config.DrugApiConfig"
+    },
+    {
+      "name": "health.drug-api.drug-search-path",
+      "type": "java.lang.String",
+      "description": "药品搜索接口路径",
+      "sourceType": "com.health.config.DrugApiConfig"
+    },
+    {
+      "name": "health.drug-api.host",
+      "type": "java.lang.String",
+      "description": "API主机地址",
+      "sourceType": "com.health.config.DrugApiConfig"
+    },
+    {
+      "name": "health.wechat.appid",
+      "type": "java.lang.String",
+      "description": "小程序AppID",
+      "sourceType": "com.health.config.WechatConfig"
+    },
+    {
+      "name": "health.wechat.grant-type",
+      "type": "java.lang.String",
+      "description": "授权类型",
+      "sourceType": "com.health.config.WechatConfig"
+    },
+    {
+      "name": "health.wechat.login-url",
+      "type": "java.lang.String",
+      "description": "登录接口URL",
+      "sourceType": "com.health.config.WechatConfig"
+    },
+    {
+      "name": "health.wechat.secret",
+      "type": "java.lang.String",
+      "description": "小程序AppSecret",
+      "sourceType": "com.health.config.WechatConfig"
+    }
+  ],
+  "hints": []
+}

@@ -1,0 +1,120 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: health-management
+  
+  # 数据库配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/Health_DB?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 2333
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  
+  # JSON配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+
+# MyBatis配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.health.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: true
+    lazy-loading-enabled: true
+    multiple-result-sets-enabled: true
+    use-column-label: true
+    use-generated-keys: true
+    auto-mapping-behavior: partial
+    default-executor-type: simple
+    default-statement-timeout: 25000
+
+# 日志配置
+logging:
+  level:
+    com.health: debug
+    org.springframework.web: info
+    org.mybatis: debug
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/health-management.log
+    max-size: 10MB
+    max-history: 30
+
+# 自定义配置
+health:
+  # 微信小程序配置
+  wechat:
+    appid: wx10edbc64a2d3c730
+    secret: 4118914a31b0868ffe72bb44dc90fdf8
+    grant-type: authorization_code
+    login-url: https://api.weixin.qq.com/sns/jscode2session
+  
+  # 药智数据API配置
+  drug-api:
+    host: https://jumbarcode.market.alicloudapi.com
+    app-key: 204774773
+    app-secret: tVh7phbA4DWCGyHYxyTMtxEqJBcMqfVu
+    app-code: 23410723faec4b478aa21e0d18168c49
+    barcode-query-path: /bar-code/query
+    drug-search-path: /tmcx/drug/query
+    drug-detail-path: /tmcx/drug/detail
+  
+  # JWT配置
+  jwt:
+    secret: healthManagementSecretKey2024
+    expiration: 604800 # 7天，单位秒
+    header: Authorization
+    prefix: Bearer
+  
+  # 文件上传配置
+  upload:
+    path: /uploads/
+    max-file-size: 10MB
+    max-request-size: 50MB
+    allowed-extensions: jpg,jpeg,png,gif,pdf,doc,docx
+  
+  # 定时任务配置
+  scheduler:
+    pool-size: 10
+    thread-name-prefix: health-task-
+    await-termination-seconds: 60
+    wait-for-tasks-to-complete-on-shutdown: true
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
