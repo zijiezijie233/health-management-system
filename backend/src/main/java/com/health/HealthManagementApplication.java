@@ -24,8 +24,8 @@ public class HealthManagementApplication {
         SpringApplication.run(HealthManagementApplication.class, args);
         System.out.println("");
         System.out.println("  _    _            _ _   _       __  __                                                   _   ");
-        System.out.println(" | |  | |          | | | | |     |  \\/  |                                                 | |  ");
-        System.out.println(" | |__| | ___  __ _| | |_| |__   | |\\/| | __ _ _ __   __ _  __ _  ___ _ __ ___   ___ _ __ | |_ ");
+        System.out.println(" | |  | |          | | | | |     |  \/  |                                                 | |  ");
+        System.out.println(" | |__| | ___  __ _| | |_| |__   | |\/| | __ _ _ __   __ _  __ _  ___ _ __ ___   ___ _ __ | |_ ");
         System.out.println(" |  __  |/ _ \\/ _` | | __| '_ \\  | |  | |/ _` | '_ \\ / _` |/ _` |/ _ \\ '_ ` _ \\ / _ \\ '_ \\| __|");
         System.out.println(" | |  | |  __/ (_| | | |_| | | | | |  | | (_| | | | | (_| | (_| |  __/ | | | | |  __/ | | | |_ ");
         System.out.println(" |_|  |_|\\___\\__,_|_|\\__|_| |_| |_|  |_|\\__,_|_| |_|\\__,_|\\__, |\\___|_| |_| |_|\\___|_| |_|\\__|");
