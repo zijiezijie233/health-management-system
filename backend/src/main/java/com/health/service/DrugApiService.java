@@ -1,228 +1,275 @@
 package com.health.service;
 
-import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
-import com.health.config.DrugApiConfig;
 import com.health.entity.Drug;
-import lombok.extern.slf4j.Slf4j;
+import com.health.mapper.ApiCallLogMapper;
+import com.health.util.HttpUtils;
+import org.apache.http.HttpResponse;
+import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.*;
 
-/**
- * 药智数据API服务类
- * 
- * @author Health Team
- * @since 2024-01-20
- */
-@Slf4j
 @Service
 public class DrugApiService {
-    
+
+    private static final Logger logger = LoggerFactory.getLogger(DrugApiService.class);
+
+    @Value("${drug.api.host}")
+    private String apiHost;
+
+    @Value("${drug.api.appcode}")
+    private String appCode;
+
     @Autowired
-    private DrugApiConfig drugApiConfig;
-    
-    @Autowired
-    private RestTemplate restTemplate;
-    
+    private ApiCallLogMapper apiCallLogMapper;
+
+    /**
+     * 根据药品ID查询详细信息
+     */
+    public Drug queryDrugDetail(String drugId) {
+        String path = "/drug/detail";
+        Map<String, String> bodys = new HashMap<>();
+        bodys.put("id", drugId);
+
+        try {
+            String response = callApi(path, bodys);
+            return parseDrugFromResponse(response, "detail");
+        } catch (Exception e) {
+            logger.error("查询药品详情失败: drugId={}", drugId, e);
+            return null;
+        }
+    }
+
+    /**
+     * 根据关键词搜索药品
+     */
+    public List<Drug> searchDrugs(String keyword, int page, int size) {
+        String path = "/tmcx/drug/query";
+        Map<String, String> bodys = new HashMap<>();
+        bodys.put("key", keyword);
+        bodys.put("type", "1"); // 1表示按药品名称搜索
+        bodys.put("pageNo", String.valueOf(page));
+
+        try {
+            String response = callApi(path, bodys);
+            return parseDrugListFromResponse(response);
+        } catch (Exception e) {
+            logger.error("搜索药品失败: keyword={}, page={}", keyword, page, e);
+            return new ArrayList<>();
+        }
+    }
+
     /**
      * 根据条形码查询药品信息
      */
     public Drug queryDrugByBarcode(String barcode) {
+        String path = "/brugs/barCode/query";
+        Map<String, String> bodys = new HashMap<>();
+        bodys.put("code", barcode);
+
         try {
-            String url = drugApiConfig.getBarcodeQueryUrl() + "?barcode=" + barcode;
-            
-            HttpHeaders headers = createHeaders();
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            
-            log.info("条形码查询响应: {}", response.getBody());
-            
-            return parseDrugFromResponse(response.getBody());
-            
+            String response = callApi(path, bodys);
+            return parseBarcodeResponse(response);
         } catch (Exception e) {
-            log.error("条形码查询药品失败: barcode={}", barcode, e);
-            throw new RuntimeException("查询药品信息失败: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * 搜索药品
-     */
-    public List<Drug> searchDrugs(String keyword, int page, int size) {
-        try {
-            String url = String.format("%s?keyword=%s&page=%d&size=%d", 
-                    drugApiConfig.getDrugSearchUrl(), keyword, page, size);
-            
-            HttpHeaders headers = createHeaders();
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            
-            log.info("药品搜索响应: {}", response.getBody());
-            
-            return parseDrugListFromResponse(response.getBody());
-            
-        } catch (Exception e) {
-            log.error("搜索药品失败: keyword={}", keyword, e);
-            throw new RuntimeException("搜索药品失败: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * 获取药品详细信息
-     */
-    public Drug getDrugDetail(String drugId) {
-        try {
-            String url = drugApiConfig.getDrugDetailUrl() + "?id=" + drugId;
-            
-            HttpHeaders headers = createHeaders();
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            
-            log.info("药品详情响应: {}", response.getBody());
-            
-            return parseDrugFromResponse(response.getBody());
-            
-        } catch (Exception e) {
-            log.error("获取药品详情失败: drugId={}", drugId, e);
-            throw new RuntimeException("获取药品详情失败: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * 创建请求头
-     */
-    private HttpHeaders createHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "APPCODE " + drugApiConfig.getAppCode());
-        headers.set("Content-Type", "application/json; charset=utf-8");
-        return headers;
-    }
-    
-    /**
-     * 解析单个药品响应
-     */
-    private Drug parseDrugFromResponse(String responseBody) {
-        if (responseBody == null || responseBody.trim().isEmpty()) {
-            return null;
-        }
-        
-        try {
-            JSONObject jsonObject = JSON.parseObject(responseBody);
-            
-            // 检查响应状态
-            if (!isSuccessResponse(jsonObject)) {
-                log.warn("API响应失败: {}", responseBody);
-                return null;
-            }
-            
-            JSONObject data = jsonObject.getJSONObject("data");
-            if (data == null) {
-                return null;
-            }
-            
-            return convertJsonToDrug(data);
-            
-        } catch (Exception e) {
-            log.error("解析药品响应失败", e);
+            logger.error("条形码查询失败: barcode={}", barcode, e);
             return null;
         }
     }
-    
+
+    /**
+     * 调用第三方API
+     */
+    private String callApi(String path, Map<String, String> bodys) throws Exception {
+        String method = "POST";
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Authorization", "APPCODE " + appCode);
+        headers.put("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+        Map<String, String> querys = new HashMap<>();
+
+        // 记录API调用日志
+        logApiCall(path, bodys.toString());
+
+        HttpResponse response = HttpUtils.doPost(apiHost, path, method, headers, querys, bodys);
+        return EntityUtils.toString(response.getEntity());
+    }
+
+    /**
+     * 解析药品详情响应
+     */
+    private Drug parseDrugFromResponse(String response, String type) {
+        try {
+            JSONObject jsonResponse = JSONObject.parseObject(response);
+            if (jsonResponse.getInteger("code") == 200) {
+                JSONObject data = jsonResponse.getJSONObject("data");
+                if (data != null) {
+                    if ("detail".equals(type)) {
+                        return convertJsonToDrugFromDetail(data);
+                    } else {
+                        return convertJsonToDrugFromSearch(data);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error("解析药品响应失败: response={}", response, e);
+        }
+        return null;
+    }
+
+    /**
+     * 解析条形码查询响应
+     */
+    private Drug parseBarcodeResponse(String response) {
+        try {
+            JSONObject jsonResponse = JSONObject.parseObject(response);
+            if (jsonResponse.getInteger("code") == 200) {
+                JSONObject data = jsonResponse.getJSONObject("data");
+                if (data != null) {
+                    return convertJsonToDrugFromBarcode(data);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("解析条形码响应失败: response={}", response, e);
+        }
+        return null;
+    }
+
     /**
      * 解析药品列表响应
      */
-    private List<Drug> parseDrugListFromResponse(String responseBody) {
+    private List<Drug> parseDrugListFromResponse(String response) {
         List<Drug> drugs = new ArrayList<>();
-        
-        if (responseBody == null || responseBody.trim().isEmpty()) {
-            return drugs;
-        }
-        
         try {
-            JSONObject jsonObject = JSON.parseObject(responseBody);
-            
-            // 检查响应状态
-            if (!isSuccessResponse(jsonObject)) {
-                log.warn("API响应失败: {}", responseBody);
-                return drugs;
-            }
-            
-            JSONArray dataArray = jsonObject.getJSONArray("data");
-            if (dataArray == null) {
-                return drugs;
-            }
-            
-            for (int i = 0; i < dataArray.size(); i++) {
-                JSONObject drugJson = dataArray.getJSONObject(i);
-                Drug drug = convertJsonToDrug(drugJson);
-                if (drug != null) {
-                    drugs.add(drug);
+            JSONObject jsonResponse = JSONObject.parseObject(response);
+            if (jsonResponse.getInteger("code") == 200) {
+                JSONObject data = jsonResponse.getJSONObject("data");
+                if (data != null) {
+                    JSONArray list = data.getJSONArray("list");
+                    if (list != null) {
+                        for (int i = 0; i < list.size(); i++) {
+                            JSONObject drugJson = list.getJSONObject(i);
+                            Drug drug = convertJsonToDrugFromSearch(drugJson);
+                            if (drug != null) {
+                                drugs.add(drug);
+                            }
+                        }
+                    }
                 }
             }
-            
         } catch (Exception e) {
-            log.error("解析药品列表响应失败", e);
+            logger.error("解析药品列表响应失败: response={}", response, e);
         }
-        
         return drugs;
     }
-    
+
     /**
-     * 检查响应是否成功
+     * 将详情API的JSON转换为Drug对象
      */
-    private boolean isSuccessResponse(JSONObject jsonObject) {
-        Integer code = jsonObject.getInteger("code");
-        return code != null && code == 200;
-    }
-    
-    /**
-     * 将JSON对象转换为Drug实体
-     */
-    private Drug convertJsonToDrug(JSONObject drugJson) {
-        if (drugJson == null) {
-            return null;
+    private Drug convertJsonToDrugFromDetail(JSONObject drugJson) {
+        Drug drug = new Drug();
+        drug.setDrugId(drugJson.getString("id"));
+        drug.setDrugName(drugJson.getString("name"));
+        drug.setTrademark(drugJson.getString("trademark"));
+        drug.setManufacturer(drugJson.getString("manuName"));
+        drug.setSpecification(drugJson.getString("spec"));
+        drug.setDosageForm(drugJson.getString("character"));
+        drug.setMainIngredients(drugJson.getString("basis"));
+        drug.setIndications(drugJson.getString("purpose"));
+        drug.setUsageAndDosage(drugJson.getString("dosage"));
+        drug.setContraindications(drugJson.getString("taboo"));
+        drug.setPrecautions(drugJson.getString("consideration"));
+        drug.setStorageConditions(drugJson.getString("storage"));
+        drug.setValidityPeriod(drugJson.getString("validity"));
+        drug.setApprovalNumber(drugJson.getString("approval"));
+        drug.setImageUrl(drugJson.getString("img"));
+        
+        // 设置价格，如果有的话
+        if (drugJson.getBigDecimal("price") != null) {
+            drug.setPrice(drugJson.getBigDecimal("price"));
         }
         
+        drug.setCreatedAt(LocalDateTime.now());
+        drug.setUpdatedAt(LocalDateTime.now());
+        return drug;
+    }
+
+    /**
+     * 将搜索API的JSON转换为Drug对象
+     */
+    private Drug convertJsonToDrugFromSearch(JSONObject drugJson) {
         Drug drug = new Drug();
-        
-        // 基本信息
-        drug.setName(drugJson.getString("name"));
-        drug.setBarcode(drugJson.getString("barcode"));
-        drug.setApprovalNumber(drugJson.getString("approvalNumber"));
+        drug.setDrugId(drugJson.getString("id"));
+        drug.setDrugName(drugJson.getString("name"));
+        drug.setTrademark(drugJson.getString("trademark"));
         drug.setManufacturer(drugJson.getString("manufacturer"));
         drug.setSpecification(drugJson.getString("specification"));
         drug.setDosageForm(drugJson.getString("dosageForm"));
-        drug.setMainIngredient(drugJson.getString("mainIngredient"));
-        
-        // 详细信息
+        drug.setMainIngredients(drugJson.getString("ingredients"));
         drug.setIndications(drugJson.getString("indications"));
+        drug.setUsageAndDosage(drugJson.getString("usage"));
         drug.setContraindications(drugJson.getString("contraindications"));
-        drug.setAdverseReactions(drugJson.getString("adverseReactions"));
-        drug.setUsage(drugJson.getString("usage"));
         drug.setPrecautions(drugJson.getString("precautions"));
-        drug.setDrugInteractions(drugJson.getString("drugInteractions"));
-        drug.setStorageConditions(drugJson.getString("storageConditions"));
-        drug.setValidityPeriod(drugJson.getString("validityPeriod"));
-        
-        // 其他信息
+        drug.setStorageConditions(drugJson.getString("storage"));
+        drug.setValidityPeriod(drugJson.getString("validity"));
+        drug.setApprovalNumber(drugJson.getString("approvalNumber"));
         drug.setImageUrl(drugJson.getString("imageUrl"));
-        drug.setPrice(drugJson.getBigDecimal("price"));
         
-        // 设置默认状态
-        drug.setStatus(Drug.Status.ACTIVE.getValue());
+        // 设置价格
+        if (drugJson.getBigDecimal("price") != null) {
+            drug.setPrice(drugJson.getBigDecimal("price"));
+        }
         
+        drug.setCreatedAt(LocalDateTime.now());
+        drug.setUpdatedAt(LocalDateTime.now());
         return drug;
+    }
+
+    /**
+     * 将条形码API的JSON转换为Drug对象
+     */
+    private Drug convertJsonToDrugFromBarcode(JSONObject drugJson) {
+        Drug drug = new Drug();
+        drug.setDrugId(drugJson.getString("code")); // 条形码作为ID
+        drug.setDrugName(drugJson.getString("name"));
+        drug.setTrademark(drugJson.getString("trademark"));
+        drug.setManufacturer(drugJson.getString("manuName"));
+        drug.setSpecification(drugJson.getString("spec"));
+        drug.setDosageForm(drugJson.getString("character"));
+        drug.setMainIngredients(drugJson.getString("basis"));
+        drug.setIndications(drugJson.getString("purpose"));
+        drug.setUsageAndDosage(drugJson.getString("dosage"));
+        drug.setContraindications(drugJson.getString("taboo"));
+        drug.setPrecautions(drugJson.getString("consideration"));
+        drug.setStorageConditions(drugJson.getString("storage"));
+        drug.setValidityPeriod(drugJson.getString("validity"));
+        drug.setApprovalNumber(drugJson.getString("approval"));
+        drug.setImageUrl(drugJson.getString("img"));
+        
+        drug.setCreatedAt(LocalDateTime.now());
+        drug.setUpdatedAt(LocalDateTime.now());
+        return drug;
+    }
+
+    /**
+     * 记录API调用日志
+     */
+    private void logApiCall(String apiPath, String requestParams) {
+        try {
+            Map<String, Object> logData = new HashMap<>();
+            logData.put("apiPath", apiPath);
+            logData.put("requestParams", requestParams);
+            logData.put("callTime", LocalDateTime.now());
+            
+            apiCallLogMapper.insertApiCallLog(logData);
+        } catch (Exception e) {
+            logger.error("记录API调用日志失败", e);
+        }
     }
 }
